@@ -1,0 +1,30 @@
+name: Build APK
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with: java-version: '17' distribution: 'temurin'
+      - name: Install p4a
+        run: pip install python-for-android
+      - name: Download Android SDK/NDK
+        run: |
+          mkdir -p $HOME/Android/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/tools.zip
+          unzip -q /tmp/tools.zip -d /tmp
+          mv /tmp/cmdline-tools $HOME/Android/cmdline-tools/latest
+          export PATH=$PATH:$HOME/Android/cmdline-tools/latest/bin
+          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+      - name: Build APK
+        run: |
+          export ANDROIDSDK=$HOME/Android
+          export ANDROIDNDK=$HOME/Android/ndk/25.2.9519653
+          python3 -m p4a apk --private . --package=org.python.voiceassistant --name "AI Assistant" --version 1.0 --bootstrap=sdl2 --requirements=python3,kivy==2.3.0,kivymd==2.0.0.dev0,requests,speechrecognition,plyer,android,pyjnius --android_api=33 --minsdk=21
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-assistant-apk
+          path: ~/.local/share/python-for-android/dists/*/bin/*.apk
